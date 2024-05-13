@@ -1,5 +1,5 @@
 [package]
-name = "rustlink"
+name = "cryptoprices"
 version = "0.1.0"
 edition = "2021"
 
@@ -10,3 +10,6 @@ sled = "0.34.7"
 tokio = {version="1.37.0",features=["full"]}
 alloy = { git = "https://github.com/alloy-rs/alloy", version = "0.1.0",features=["rpc-types-eth","eips","signers","signer-wallet","consensus","network","providers","transports","transport-http","contract"] }
 reqwest = "0.12.4"
+bincode = "1.3.3"
+serde = "1.0.201"
+thiserror = "1.0.60"
