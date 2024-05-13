@@ -910,21 +910,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cryptoprices"
-version = "0.1.0"
-dependencies = [
- "alloy",
- "bincode",
- "log",
- "log4rs",
- "reqwest",
- "serde",
- "sled",
- "thiserror",
- "tokio",
-]
-
-[[package]]
 name = "dashmap"
 version = "5.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2293,6 +2278,21 @@ dependencies = [
  "libc",
  "linux-raw-sys",
  "windows-sys 0.52.0",
+]
+
+[[package]]
+name = "rustlink"
+version = "0.1.0"
+dependencies = [
+ "alloy",
+ "bincode",
+ "log",
+ "log4rs",
+ "reqwest",
+ "serde",
+ "sled",
+ "thiserror",
+ "tokio",
 ]
 
 [[package]]

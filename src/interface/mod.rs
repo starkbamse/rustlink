@@ -1,4 +1,4 @@
-use alloy::{contract::Error, providers::RootProvider, sol, transports::http::Http};
+use alloy::{contract::Error, primitives::Uint, providers::RootProvider, sol, transports::http::Http};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 
@@ -11,54 +11,37 @@ sol!(
     "src/abi/IAggregatorV3Interface.json"
 );
 
-pub trait Serializable {
-    fn to_bin(&self) -> Result<Vec<u8>, Box<bincode::ErrorKind>>;
-    fn from_bin(data: Vec<u8>) -> Result<Self, Box<bincode::ErrorKind>>
-    where
-        Self: Sized;
-}
-
 #[derive(Clone)]
-pub struct ChainlinkContract {
-    pub contract: IAggregatorV3InterfaceInstance<Http<Client>, RootProvider<Http<Client>>>,
+pub struct ChainlinkContract<'a> {
+    pub contract: IAggregatorV3InterfaceInstance<Http<Client>, &'a RootProvider<Http<Client>>>,
     pub decimals: u8,
 }
 
 /// The latest price received for this symbol.
 /// This data is directly retrieved from the underlying contract.
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize,Debug)]
 pub struct PriceData {
     /// Id of the submission by the aggregator
     pub round_id: u128,
     /// Answered in round
     pub answered_in_round: u128,
     /// Timestamp for when the aggregator started collecting data
-    pub started_at: String,
+    pub started_at: Uint<256,4>,
     /// Timestamp for when the aggregator posted the price update
-    pub updated_at: String,
+    pub updated_at: Uint<256,4>,
     /// Price of the asset         
     pub price: f64,
 }
 
-impl Serializable for PriceData {
-    /// Serializes invoice to bytes
-    fn to_bin(&self) -> Result<Vec<u8>, Box<bincode::ErrorKind>> {
-        bincode::serialize(&self)
-    }
 
-    /// Deserializes invoice from bytes
-    fn from_bin(data: Vec<u8>) -> Result<Self, Box<bincode::ErrorKind>> {
-        bincode::deserialize(&data)
-    }
-}
 
-impl ChainlinkContract {
+impl<'a> ChainlinkContract<'a> {
     /// Creates a new instance of a chainlink price aggregator. This is just a wrapper
     /// function to simplify the interactions with the contract.
     pub async fn new(
-        provider: RootProvider<Http<Client>>,
+        provider: &'a RootProvider<Http<Client>>,
         contract_address: &str,
-    ) -> Result<ChainlinkContract, Error> {
+    ) -> Result<ChainlinkContract <'a>, Error> {
         let contract = IAggregatorV3Interface::new(contract_address.parse().unwrap(), provider);
 
         let IAggregatorV3Interface::decimalsReturn { _0: decimals } =
@@ -68,7 +51,7 @@ impl ChainlinkContract {
 
     /// Retrieves the latest price of this underlying asset
     /// from the chainlink decentralized data feed
-    pub async fn get_price(&self) -> Result<PriceData, Error> {
+    pub async fn latest_round_data(&self) -> Result<PriceData, Error> {
         let IAggregatorV3Interface::latestRoundDataReturn {
             roundId,
             answer,
@@ -86,8 +69,8 @@ impl ChainlinkContract {
         Ok(PriceData {
             round_id: roundId,
             answered_in_round: answeredInRound,
-            started_at: startedAt.to_string(),
-            updated_at: updatedAt.to_string(),
+            started_at: startedAt,
+            updated_at: updatedAt,
             price: human_price,
         })
     }
@@ -108,12 +91,11 @@ mod tests {
             .on_http(Url::from_str("https://bsc-dataseed1.binance.org/").unwrap());
 
         let chainlink_contract =
-            ChainlinkContract::new(provider, "0x9ef1B8c0E4F7dc8bF5719Ea496883DC6401d5b2e")
+            ChainlinkContract::new(&provider, "0x9ef1B8c0E4F7dc8bF5719Ea496883DC6401d5b2e")
                 .await
                 .unwrap();
-        let price_data = chainlink_contract.get_price().await.unwrap();
-        println!("Price check: {}", price_data.price);
-        println!("Round id: {}", price_data.round_id);
+        let price_data = chainlink_contract.latest_round_data().await.unwrap();
+        println!("Received data: {:#?}", price_data);
         assert!(price_data.price.ge(&0f64));
     }
 }
