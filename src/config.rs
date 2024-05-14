@@ -1,7 +1,9 @@
+use crate::{error::Error, fetcher::fetch_rounds, interface::Round};
 use alloy::{
     providers::{ProviderBuilder, RootProvider},
     transports::http::Http,
 };
+use async_std::channel::Sender;
 use log::LevelFilter;
 use log4rs::{
     append::file::FileAppender,
@@ -10,11 +12,7 @@ use log4rs::{
     Config,
 };
 use reqwest::{Client, Url};
-use sled::Tree;
-use std::{path::Path, str::FromStr};
-use crate::{
-    error::Error, fetcher::fetch_rounds, interface::PriceData
-};
+use std::str::FromStr;
 
 #[derive(Clone)]
 pub struct Configuration {
@@ -35,10 +33,30 @@ pub struct Configuration {
 #[derive(Clone)]
 pub struct Rustlink {
     pub configuration: Configuration,
-    pub tree: Tree,
+    pub reflector: Reflector,
 }
 
-
+/// Rustlink allows you as a developer to retrieve the sought Chainlink data in
+/// different ways.
+///
+/// In its current state you can pass a Sender from an unbound async-std channel
+/// which you can create by doing:
+/// ```rust
+/// use async_std::channel::unbounded;
+/// use rustlink::config::Reflector;
+///
+/// let (sender, receiver) = unbounded();
+///
+/// let reflector=Reflector::Sender(sender);
+/// ```
+///
+/// You may clone the receiver as many times as you want but do not use the sender
+/// for anything other than passing it to the try_new() method.
+#[derive(Clone)]
+pub enum Reflector {
+    /// A sender from async-std
+    Sender(Sender<Round>),
+}
 
 impl Rustlink {
     /// Creates a new Rustlink instance.
@@ -47,7 +65,7 @@ impl Rustlink {
     /// - `rpc_url`: The RPC url of your chosen EVM network where Chainlink offers decentralised data feeds.
     /// Don't know where? Check https://data.chain.link/feeds.
     /// - `fetch_interval_seconds`: How often to update data points in the database (to prevent RPC rate limitation)
-    /// - `sled_path`: The path for the database
+    /// - `reflector`: How you choose to receive the answer from your provided contracts.
     /// - `contracts`: A tuple list containing a ticker name and its corresponding contract address on the
     /// EVM chain.
     ///
@@ -55,17 +73,22 @@ impl Rustlink {
     ///
     /// ```rust
     /// use rustlink::config::Rustlink;
+    /// use async_std::channel::unbounded;
+    /// use rustlink::config::Reflector;
     /// let mut contracts:Vec<(String,String)>=Vec::new();
     /// contracts.push(("BTC".to_string(),"0x9ef1B8c0E4F7dc8bF5719Ea496883DC6401d5b2e".to_string()));
-    /// let crypto_prices=Rustlink::try_new("https://bsc-dataseed1.binance.org/",10,"./rustlink",contracts);
+    ///
+    /// let (sender, receiver) = unbounded();
+    ///
+    /// let reflector=Reflector::Sender(sender);///
+    /// let crypto_prices=Rustlink::try_new("https://bsc-dataseed1.binance.org/",10,reflector,contracts);
     /// ```
-    pub fn try_new<P : AsRef<Path>>(
+    pub fn try_new(
         rpc_url: &str,
         fetch_interval_seconds: u64,
-        sled_path: P,
+        reflector: Reflector,
         contracts: Vec<(String, String)>,
-    ) -> Result<Self,Error> {
-        let db = sled::open(sled_path.as_ref())?;
+    ) -> Result<Self, Error> {
         let provider = ProviderBuilder::new().on_http(Url::from_str(rpc_url).unwrap());
 
         // Setup logging
@@ -91,7 +114,7 @@ impl Rustlink {
                 provider,
                 contracts,
             },
-            tree: db.open_tree("rustlink").unwrap(),
+            reflector,
         })
     }
 
@@ -99,19 +122,5 @@ impl Rustlink {
     /// from the chainlink contracts.
     pub fn fetch(&self) {
         tokio::spawn(fetch_rounds(self.clone()));
-    }
-
-    /// Helper function to retrieve data from the Sled db.
-    fn get_from_tree(db: &Tree, key: &str) -> Result<Vec<u8>, Error> {
-        Ok(db.get(key)?.ok_or(Error::NotFound)?.to_vec())
-    }
-
-    /// Public getter for reading the latest retrieved cryptocurrency price.
-    pub fn get_answer(&self, ticker: &str) -> Result<PriceData, Error> {
-        let binary_data = Self::get_from_tree(&self.tree, ticker)?;
-        bincode::deserialize::<PriceData>(&binary_data).map_err(|error| {
-            log::error!("Deserialization: {}", error);
-            Error::Deserialize
-        })
     }
 }
