@@ -1,0 +1,1 @@
+wasm-pack build --target web --out-name rustlink --out-dir js/web --dev

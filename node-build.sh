@@ -1,0 +1,1 @@
+wasm-pack build --target nodejs --out-name rustlink --out-dir js/node

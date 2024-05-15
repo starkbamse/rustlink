@@ -20,7 +20,7 @@ mod tests {
 
         let (sender, receiver) = unbounded();
 
-        let crypto_prices = Rustlink::try_new(
+        let rustlink = Rustlink::try_new(
             "https://bsc-dataseed1.binance.org/",
             1,
             Reflector::Sender(sender),
@@ -28,7 +28,7 @@ mod tests {
         )
         .unwrap();
 
-        crypto_prices.fetch();
+        rustlink.start();
         let round_data = receiver.recv().await.unwrap();
         println!("Received data: {:#?}", round_data);
         assert!(round_data.answer.ge(&0f64));

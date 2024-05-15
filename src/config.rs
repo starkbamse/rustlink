@@ -3,16 +3,14 @@ use alloy::{
     providers::{ProviderBuilder, RootProvider},
     transports::http::Http,
 };
-use async_std::channel::Sender;
-use log::LevelFilter;
-use log4rs::{
-    append::file::FileAppender,
-    config::{Appender, Root},
-    encode::pattern::PatternEncoder,
-    Config,
-};
+use async_std::channel::{unbounded, Receiver, RecvError, Sender};
+use js_sys::Function;
 use reqwest::{Client, Url};
+use serde_wasm_bindgen::{from_value, to_value};
 use std::str::FromStr;
+use wasm_bindgen::{prelude::wasm_bindgen, JsValue};
+use wasm_bindgen_futures::spawn_local;
+use workflow_rs::core::cfg_if;
 
 #[derive(Clone)]
 pub struct Configuration {
@@ -21,9 +19,9 @@ pub struct Configuration {
     pub provider: RootProvider<Http<Client>>,
 }
 
-/// ## Cryptoprices
+/// ## Rustlink
 ///
-/// Cryptoprices is a lightweight Rust library that provides your Rust applications with a direct
+/// Rustlink is a lightweight Rust library that provides your Rust applications with a direct
 /// link to the latest cryptocurrency prices. All data is retrieved from Chainlink decentralized
 /// price feeds. Just copy the contract addresses for the symbol that you would like to track from:
 /// https://data.chain.link/feeds.
@@ -34,6 +32,10 @@ pub struct Configuration {
 pub struct Rustlink {
     pub configuration: Configuration,
     pub reflector: Reflector,
+    pub termination_send: Sender<()>,
+    pub termination_recv: Receiver<()>,
+    pub shutdown_send: Sender<()>,
+    pub shutdown_recv: Receiver<()>,
 }
 
 /// Rustlink allows you as a developer to retrieve the sought Chainlink data in
@@ -90,24 +92,8 @@ impl Rustlink {
         contracts: Vec<(String, String)>,
     ) -> Result<Self, Error> {
         let provider = ProviderBuilder::new().on_http(Url::from_str(rpc_url).unwrap());
-
-        // Setup logging
-        let logfile = FileAppender::builder()
-            .encoder(Box::new(PatternEncoder::new("{l} - {m}\n")))
-            .build("./rustlink.log")
-            .unwrap();
-
-        let config = Config::builder()
-            .appender(Appender::builder().build("logfile", Box::new(logfile)))
-            .build(Root::builder().appender("logfile").build(LevelFilter::Info))
-            .unwrap();
-
-        // Try to initialize and catch error silently if already initialized
-        // during tests this make this function throw error
-        if log4rs::init_config(config).is_err() {
-            println!("Logger already initialized.");
-        }
-
+        let (termination_send, termination_recv) = unbounded::<()>();
+        let (shutdown_send, shutdown_recv) = unbounded::<()>();
         Ok(Rustlink {
             configuration: Configuration {
                 fetch_interval_seconds,
@@ -115,12 +101,106 @@ impl Rustlink {
                 contracts,
             },
             reflector,
+            termination_send,
+            termination_recv,
+            shutdown_send,
+            shutdown_recv,
         })
     }
 
-    /// Starts fetching data points in a new asynchronous task
-    /// from the chainlink contracts.
-    pub fn fetch(&self) {
-        tokio::spawn(fetch_rounds(self.clone()));
+    pub fn start(&self) {
+        #[cfg(not(target_arch = "wasm32"))]
+        tokio::task::spawn(fetch_rounds(self.clone()));
+
+        #[cfg(target_arch = "wasm32")]
+        async_std::task::block_on(fetch_rounds(self.clone()));
+    }
+
+    pub async fn stop(&self) -> Result<(), RecvError> {
+        self.termination_send.send(()).await.unwrap();
+        self.shutdown_recv.recv().await
+    }
+}
+#[wasm_bindgen]
+pub struct RustlinkJS {
+    rustlink: Rustlink,
+    callback: Function,
+    receiver: Receiver<Round>,
+}
+
+cfg_if! {
+    if #[cfg(target_arch = "wasm32")] {
+        #[wasm_bindgen(typescript_custom_section)]
+        const TS_CONTRACTS: &'static str = r#"
+        /** 
+         * A contract tuple containing an identifier and a contract address. 
+         * 
+         * **Order matters.**
+         * Example
+         * ```typescript
+         * let contracts=[["Ethereum","0x9ef1B8c0E4F7dc8bF5719Ea496883DC6401d5b2e"]]
+         * ```
+        */
+        export type Contract = [string,string] 
+        "#;
+
+    }
+}
+
+#[wasm_bindgen]
+extern "C" {
+    #[wasm_bindgen(extends = js_sys::Function, typescript_type = "Contract[]")]
+    pub type Contracts;
+}
+
+#[wasm_bindgen]
+impl RustlinkJS {
+    /// Creates a new RustlinkJS instance
+    #[wasm_bindgen(constructor)]
+    pub fn new(
+        rpc_url: &str,
+        fetch_interval_seconds: u64,
+        contracts: Contracts,
+        callback: Function,
+    ) -> Self {
+        // Cast `JsValue` to `Function`
+
+        let contracts: Vec<(String, String)> = from_value(contracts.into()).unwrap();
+
+        let (sender, receiver) = async_std::channel::unbounded();
+        let reflector = Reflector::Sender(sender);
+        let rustlink = Rustlink::try_new(rpc_url, fetch_interval_seconds, reflector, contracts)
+            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .unwrap();
+
+        RustlinkJS {
+            rustlink,
+            callback,
+            receiver,
+        }
+    }
+    #[wasm_bindgen]
+    pub fn start(&self) {
+        self.rustlink.start();
+        let receiver = self.receiver.clone();
+        let callback = self.callback.clone();
+        spawn_local(async move {
+            while let Ok(round) = receiver.recv().await {
+                // Prepare arguments to pass to JS function
+                let this = JsValue::NULL; // 'this' context for function, null in this case
+                let arg_js = to_value(&round).unwrap();
+
+                // Call the function
+                let _ = callback.call1(&this, &arg_js);
+            }
+        });
+    }
+
+    #[wasm_bindgen]
+    pub async fn stop(&self) -> Result<(), JsValue> {
+        self.rustlink
+            .stop()
+            .await
+            .map_err(|e| JsValue::from_str(&format!("Shutdown error: {}", e)))
     }
 }

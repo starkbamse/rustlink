@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Rust WASM Example</title>
+    <script type="module">
+        import init, { RustlinkJS } from '../web/rustlink.js';
+
+        async function runWasm() {
+            await init(); // Initialize the wasm module
+
+            // Example data
+            const rpcUrl = "https://bsc-dataseed1.binance.org/";
+            const fetchIntervalSeconds = BigInt(1);
+            const contracts = [
+            ["ETH", "0x9ef1B8c0E4F7dc8bF5719Ea496883DC6401d5b2e"],
+            ["1INCH", "0x9a177Bb9f5b6083E962f9e62bD21d4b5660Aeb03"],
+                
+            ];
+
+            async function callback(roundData) {
+                console.log("Callback received:", roundData);
+            }
+
+            let rustlink=new RustlinkJS(rpcUrl,fetchIntervalSeconds,contracts,callback)
+
+            rustlink.start();
+            console.log("Stopping after 5 seconds")
+
+            setTimeout(async ()=>{
+                console.log("Stopping...");
+                await rustlink.stop();
+                console.log("Stopped");
+            },5000)
+        }
+
+        runWasm();
+    </script>
+</head>
+<body>
+    <h1>Check the console for output</h1>
+</body>
+</html>
