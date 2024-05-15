@@ -29,9 +29,7 @@ pub async fn fetch_rounds(rustlink: Rustlink) {
 
     // This loop runs indefinitely, fetching price data.
     loop {
-     
-
-        for contract_configuration in contracts {            
+        for contract_configuration in contracts {
             select! {
                     _ = shutdown_future => {
                         rustlink.shutdown_send.send(()).await.unwrap();
