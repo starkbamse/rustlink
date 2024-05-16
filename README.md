@@ -52,13 +52,13 @@ rustlink = "0.0.1"
     **For the browser:**
 
     ```bash
-    ./web-build.sh
+    wasm-pack build --target web --out-name rustlink --out-dir <directory>
     ```
 
     **For Node.js:**
 
     ```bash
-    ./node-build.sh
+    wasm-pack build --target nodejs --out-name rustlink --out-dir <directory>
     ```
 
 

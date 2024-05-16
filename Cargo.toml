@@ -1,3 +1,6 @@
+[lib]
+crate-type = ["cdylib", "rlib"]
+
 [package]
 name = "rustlink"
 version = "0.0.1"
@@ -5,8 +8,9 @@ edition = "2021"
 license = "MIT OR Apache-2.0"
 description = "A lightweight and easy-to-use library for periodically retrieving data from the Chainlink decentralized data feed."
 repository = "https://github.com/starkbamse/rustlink"
-include = ["IAggregatorV3Interface.json"]
-keywords = ["crypto", "cryptocurrencies","chainlink","prices"]
+include = ["IAggregatorV3Interface.json","src/**/*.rs", "Cargo.toml"]
+keywords = ["crypto", "cryptocurrencies","chainlink","prices","bitcoin","ethereum","evm"]
+categories = ["wasm"]
 
 [dependencies]
 log = "0.4.21"
@@ -38,6 +42,3 @@ tokio = "1.37.0"
 [lints.clippy]
 empty_docs = "allow"
 
-[lib]
-lib.path = "src/lib.rs"
-crate-type = ["cdylib", "rlib"]
