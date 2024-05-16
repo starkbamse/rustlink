@@ -39,5 +39,5 @@ tokio = "1.37.0"
 empty_docs = "allow"
 
 [lib]
-crate-type = ["cdylib", "rlib"]
 lib.path = "src/lib.rs"
+crate-type = ["cdylib", "rlib"]
