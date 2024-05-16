@@ -11,6 +11,12 @@ use workflow_rs::core::cfg_if;
 use std::str::FromStr;
 use wasm_bindgen::{prelude::wasm_bindgen, JsValue};
 use wasm_bindgen_futures::spawn_local;
+
+/// ## Configuration
+/// This struct contains the configuration for Rustlink. It contains the following fields:
+/// - `fetch_interval_seconds`: How often to update data points (to prevent RPC rate limitation)
+/// - `contracts`: A list of tuples containing a ticker name and its corresponding contract address on the EVM chain
+/// - `provider`: The provider to use for fetching data
 #[derive(Clone)]
 pub struct Configuration {
     pub fetch_interval_seconds: u64,
@@ -18,15 +24,12 @@ pub struct Configuration {
     pub provider: RootProvider<Http<Client>>,
 }
 
-/// ## Rustlink
+/// ## Rustlink instance. This is the main struct that you will interact with.
 ///
 /// Rustlink is a lightweight Rust library that provides your Rust applications with a direct
 /// link to the latest cryptocurrency prices. All data is retrieved from Chainlink decentralized
 /// price feeds. Just copy the contract addresses for the symbol that you would like to track from:
-/// https://data.chain.link/feeds.
 ///
-///
-/// Note: Rustlink is designed to be ran on the main thread, in an asynchronous tokio environment
 #[derive(Clone)]
 pub struct Rustlink {
     pub configuration: Configuration,
@@ -64,7 +67,6 @@ impl Rustlink {
     ///
     /// Expected parameters:
     /// - `rpc_url`: The RPC url of your chosen EVM network where Chainlink offers decentralised data feeds.
-    /// Don't know where? Check https://data.chain.link/feeds.
     /// - `fetch_interval_seconds`: How often to update data points in the database (to prevent RPC rate limitation)
     /// - `reflector`: How you choose to receive the answer from your provided contracts.
     /// - `contracts`: A tuple list containing a ticker name and its corresponding contract address on the
@@ -98,8 +100,6 @@ impl Rustlink {
     ///     let round_data = receiver.recv().await.unwrap();
     ///     println!("Received data: {:#?}", round_data);
     /// }
-    /// 
-    /// 
     /// ```
     pub fn try_new(
         rpc_url: &str,
@@ -125,21 +125,26 @@ impl Rustlink {
         })
     }
 
+    /// Starts the Rustlink instance.
+    /// This method will start fetching the latest price data from the Chainlink decentralized data feed. 
     pub fn start(&self) {
         #[cfg(not(target_arch = "wasm32"))]
         tokio::task::spawn(fetch_rounds(self.clone()));
 
         #[cfg(target_arch = "wasm32")]
         async_std::task::block_on(fetch_rounds(self.clone()));
-
-
     }
 
+    /// Stops the Rustlink instance.
+    /// This method will stop fetching the latest price data from the Chainlink decentralized data feed.
     pub async fn stop(&self) -> Result<(), RecvError> {
         self.termination_send.send(()).await.unwrap();
         self.shutdown_recv.recv().await
     }
 }
+
+/// RustlinkJS is a JavaScript wrapper for Rustlink.
+/// It allows you to create a Rustlink instance in JavaScript and start fetching data when you use WASM.
 #[wasm_bindgen]
 pub struct RustlinkJS {
     rustlink: Rustlink,
@@ -174,7 +179,41 @@ extern "C" {
 
 #[wasm_bindgen]
 impl RustlinkJS {
-    /// Creates a new RustlinkJS instance
+    /// Creates a new RustlinkJS instance.
+    /// Expected parameters:
+    /// - `rpc_url`: The RPC url of your chosen EVM network where Chainlink offers decentralised data feeds.
+    /// - `fetch_interval_seconds`: How often to update data points (to prevent RPC rate limitation)
+    /// - `contracts`: A list of tuples containing a ticker name and its corresponding contract address on the EVM chain
+    /// - `callback`: A JavaScript function (async or sync) that will be called every time a new data point is fetched
+    /// ```javascript
+    /// import init, { RustlinkJS } from '../web/rustlink.js';
+    ///
+    /// async function runWasm() {
+    ///    await init(); // Initialize the wasm module
+    ///
+    ///    // Example data
+    ///    const rpcUrl = "https://bsc-dataseed1.binance.org/";
+    ///    const fetchIntervalSeconds = BigInt(1);
+    ///    const contracts = [
+    ///        ["ETH", "0x9ef1B8c0E4F7dc8bF5719Ea496883DC6401d5b2e"],
+    ///        ["1INCH", "0x9a177Bb9f5b6083E962f9e62bD21d4b5660Aeb03"],
+    ///    ];
+    ///
+    ///    async function callback(roundData) {
+    ///        console.log("Callback received:", roundData);
+    ///    }
+    ///
+    ///    let rustlink = new RustlinkJS(rpcUrl, fetchIntervalSeconds, contracts, callback);
+    ///
+    ///    rustlink.start();
+    ///    console.log("Stopping after 5 seconds");
+    ///    setTimeout(() => {
+    ///        rustlink.stop();
+    ///    }, 5000);
+    /// }
+    ///
+    /// runWasm();
+    /// ```
     #[wasm_bindgen(constructor)]
     pub fn new(
         rpc_url: &str,
@@ -200,6 +239,9 @@ impl RustlinkJS {
             receiver,
         }
     }
+
+    /// Starts the RustlinkJS instance.
+    /// This method will start fetching the latest price data from the Chainlink decentralized data feed.
     #[wasm_bindgen]
     pub fn start(&self) {
         self.rustlink.start();
@@ -217,6 +259,8 @@ impl RustlinkJS {
         });
     }
 
+    /// Stops the RustlinkJS instance.
+    /// This method will stop fetching the latest price data from the Chainlink decentralized data feed.
     #[wasm_bindgen]
     pub async fn stop(&self) -> Result<(), JsValue> {
         self.rustlink
