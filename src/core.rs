@@ -1,11 +1,8 @@
 use crate::{error::Error, fetcher::fetch_rounds, interface::Round};
-use alloy::{
-    providers::{ProviderBuilder, RootProvider},
-    transports::http::Http,
-};
+
 use async_std::channel::{unbounded, Receiver, RecvError, Sender};
+use ethers::{providers::{Http, Provider}, types::Address};
 use js_sys::Function;
-use reqwest::{Client, Url};
 use serde_wasm_bindgen::{from_value, to_value};
 use workflow_rs::core::cfg_if;
 use std::str::FromStr;
@@ -20,8 +17,8 @@ use wasm_bindgen_futures::spawn_local;
 #[derive(Clone)]
 pub struct Configuration {
     pub fetch_interval_seconds: u64,
-    pub contracts: Vec<(String, String)>,
-    pub provider: RootProvider<Http<Client>>,
+    pub contracts: Vec<(String, Address)>,
+    pub provider: Provider<Http>,
 }
 
 /// ## Rustlink instance. This is the main struct that you will interact with.
@@ -108,14 +105,19 @@ impl Rustlink {
         contracts: Vec<(String, String)>,
     ) -> Result<Self, Error> {
 
-        let provider = ProviderBuilder::new().on_http(Url::from_str(rpc_url).unwrap());
+        let provider = Provider::try_from(rpc_url).expect("Invalid RPC URL");
         let (termination_send, termination_recv) = unbounded::<()>();
         let (shutdown_send, shutdown_recv) = unbounded::<()>();
+
+        let parsed_contracts=contracts.iter().map(|(identifier, address)| {
+            (identifier.clone(), Address::from_str(address).expect("Invalid contract address specified"))
+        }).collect();
+
         Ok(Rustlink {
             configuration: Configuration {
                 fetch_interval_seconds,
                 provider,
-                contracts,
+                contracts:parsed_contracts,
             },
             reflector,
             termination_send,
@@ -145,6 +147,7 @@ impl Rustlink {
 
 /// RustlinkJS is a JavaScript wrapper for Rustlink.
 /// It allows you to create a Rustlink instance in JavaScript and start fetching data when you use WASM.
+/// You should use this one when you want to use Rustlink in a web environment.
 #[wasm_bindgen]
 pub struct RustlinkJS {
     rustlink: Rustlink,
@@ -173,6 +176,7 @@ cfg_if! {
 
 #[wasm_bindgen]
 extern "C" {
+    // A JavaScript array of contract tuples
     #[wasm_bindgen(extends = js_sys::Function, typescript_type = "Contract[]")]
     pub type Contracts;
 }
