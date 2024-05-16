@@ -26,12 +26,9 @@
 
             rustlink.start();
             console.log("Stopping after 5 seconds")
-
-            setTimeout(async ()=>{
-                console.log("Stopping...");
-                await rustlink.stop();
-                console.log("Stopped");
-            },5000)
+            setTimeout(() => {
+                rustlink.stop();
+            }, 5000);
         }
 
         runWasm();

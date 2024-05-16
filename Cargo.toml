@@ -12,6 +12,7 @@ serde = "1.0.201"
 thiserror = "1.0.60"
 workflow-rs = { version = "0.12.1", features = ["full"] }
 
+
 # Async-std included for all builds
 async-std = "1.12.0"
 wasm-bindgen = "0.2.92"
@@ -19,6 +20,7 @@ js-sys = "0.3.69"
 wasm-bindgen-futures = "0.4.42"
 serde-wasm-bindgen = "0.6.5"
 futures = "0.3.30"
+web-sys = "0.3.69"
 
 # Dependencies for non-WASM targets
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

@@ -7,11 +7,10 @@ use async_std::channel::{unbounded, Receiver, RecvError, Sender};
 use js_sys::Function;
 use reqwest::{Client, Url};
 use serde_wasm_bindgen::{from_value, to_value};
+use workflow_rs::core::cfg_if;
 use std::str::FromStr;
 use wasm_bindgen::{prelude::wasm_bindgen, JsValue};
 use wasm_bindgen_futures::spawn_local;
-use workflow_rs::core::cfg_if;
-
 #[derive(Clone)]
 pub struct Configuration {
     pub fetch_interval_seconds: u64,
@@ -91,6 +90,7 @@ impl Rustlink {
         reflector: Reflector,
         contracts: Vec<(String, String)>,
     ) -> Result<Self, Error> {
+
         let provider = ProviderBuilder::new().on_http(Url::from_str(rpc_url).unwrap());
         let (termination_send, termination_recv) = unbounded::<()>();
         let (shutdown_send, shutdown_recv) = unbounded::<()>();
@@ -114,6 +114,8 @@ impl Rustlink {
 
         #[cfg(target_arch = "wasm32")]
         async_std::task::block_on(fetch_rounds(self.clone()));
+
+
     }
 
     pub async fn stop(&self) -> Result<(), RecvError> {
@@ -163,6 +165,8 @@ impl RustlinkJS {
         contracts: Contracts,
         callback: Function,
     ) -> Self {
+
+        
         // Cast `JsValue` to `Function`
 
         let contracts: Vec<(String, String)> = from_value(contracts.into()).unwrap();

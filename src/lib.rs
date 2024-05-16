@@ -2,7 +2,6 @@ pub mod config;
 mod error;
 mod fetcher;
 mod interface;
-
 #[cfg(test)]
 mod tests {
 

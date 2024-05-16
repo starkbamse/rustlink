@@ -6,6 +6,8 @@ use serde::{Deserialize, Serialize};
 
 use self::IAggregatorV3Interface::IAggregatorV3InterfaceInstance;
 
+
+
 sol!(
     #[allow(missing_docs)]
     #[sol(rpc)]
@@ -19,6 +21,7 @@ pub struct ChainlinkContract<'a> {
     pub identifier: &'a str,
     pub decimals: u8,
 }
+
 
 /// The latest price received for this symbol.
 /// This data is directly retrieved from the underlying contract.
