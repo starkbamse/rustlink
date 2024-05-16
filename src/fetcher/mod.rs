@@ -1,6 +1,8 @@
 use std::time::Duration;
 
 use async_std::stream::StreamExt;
+use ethers::abi::AbiError;
+use ethers::types::Address;
 use futures::{select, FutureExt};
 
 use super::interface::{ChainlinkContract, Round};
@@ -11,8 +13,8 @@ use crate::core::{Configuration, Rustlink};
 async fn fetch_round_data_for_contract(
     rustlink_configuration: &Configuration,
     identifier: &str,
-    address: &str,
-) -> Result<Round, alloy::contract::Error> {
+    address: Address,
+) -> Result<Round, AbiError> {
     let contract =
         ChainlinkContract::new(&rustlink_configuration.provider, identifier, address).await?;
     contract.latest_round_data().await
@@ -41,7 +43,7 @@ pub async fn fetch_rounds(rustlink: Rustlink) {
                 let address = &contract_configuration.1;
 
                 // Fetch price data and attempt to send it via the channel.
-                match fetch_round_data_for_contract(&rustlink.configuration, identifier, address).await
+                match fetch_round_data_for_contract(&rustlink.configuration, identifier, *address).await
                 {
                     Ok(price_data) => {
                         match rustlink.reflector {
