@@ -40,3 +40,4 @@ empty_docs = "allow"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
+lib.path = "src/lib.rs"

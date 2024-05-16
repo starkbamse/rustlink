@@ -147,6 +147,7 @@ impl Rustlink {
 
 /// RustlinkJS is a JavaScript wrapper for Rustlink.
 /// It allows you to create a Rustlink instance in JavaScript and start fetching data when you use WASM.
+/// You should use this one when you want to use Rustlink in a web environment.
 #[wasm_bindgen]
 pub struct RustlinkJS {
     rustlink: Rustlink,
@@ -175,6 +176,7 @@ cfg_if! {
 
 #[wasm_bindgen]
 extern "C" {
+    // A JavaScript array of contract tuples
     #[wasm_bindgen(extends = js_sys::Function, typescript_type = "Contract[]")]
     pub type Contracts;
 }
