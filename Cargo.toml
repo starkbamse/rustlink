@@ -2,6 +2,11 @@
 name = "rustlink"
 version = "0.0.1"
 edition = "2021"
+license = "MIT OR Apache-2.0"
+description = "A lightweight and easy-to-use library for periodically retrieving data from the Chainlink decentralized data feed."
+repository = "https://github.com/starkbamse/rustlink"
+include = ["**/*.json"]
+keywords = ["crypto", "cryptocurrencies","chainlink","prices"]
 
 [dependencies]
 log = "0.4.21"

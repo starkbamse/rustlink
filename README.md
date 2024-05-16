@@ -31,6 +31,37 @@ To use `rustlink` in your project, add the following to your `Cargo.toml` file:
 rustlink = "0.0.1"
 ```
 
+## Build for WASM
+
+1. ### Prerequisites
+    To build the library for WASM, you need to have the `wasm-pack` tool installed. You can install it by running the following command:
+
+    ```bash
+    cargo install wasm-pack
+    ```
+
+    You also need the wasm32-unknown-unknown target installed. You can install it by running the following command:
+
+    ```bash
+    rustup target add wasm32-unknown-unknown
+    ```
+
+2. ### Building WASM
+    You can build the library either for the **browser** or for **Node.js**. 
+
+    **For the browser:**
+
+    ```bash
+    ./web-build.sh
+    ```
+
+    **For Node.js:**
+
+    ```bash
+    ./node-build.sh
+    ```
+
+
 ## Usage
 Here is a simple example of how you can use `rustlink` to retrieve the latest price of a cryptocurrency:
 
@@ -67,4 +98,36 @@ loop {
     let round_data = receiver.recv().await.unwrap();
     println!("Received data: {:#?}", round_data);
 }
+```
+
+## WASM Usage
+
+```javascript
+import init, { RustlinkJS } from '../web/rustlink.js';
+
+async function runWasm() {
+   await init(); // Initialize the wasm module
+
+   // Example data
+   const rpcUrl = "https://bsc-dataseed1.binance.org/";
+   const fetchIntervalSeconds = BigInt(1);
+   const contracts = [
+       ["ETH", "0x9ef1B8c0E4F7dc8bF5719Ea496883DC6401d5b2e"],
+       ["1INCH", "0x9a177Bb9f5b6083E962f9e62bD21d4b5660Aeb03"],
+   ];
+
+   async function callback(roundData) {
+       console.log("Callback received:", roundData);
+   }
+
+   let rustlink = new RustlinkJS(rpcUrl, fetchIntervalSeconds, contracts, callback);
+
+   rustlink.start();
+   console.log("Stopping after 5 seconds");
+   setTimeout(() => {
+       rustlink.stop();
+   }, 5000);
+}
+
+runWasm();
 ```
