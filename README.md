@@ -1,2 +1,70 @@
-# `rustlink`
- A lightweight rust library for periodically retrieving cryptocurrency prices from the ChainLink decentralized price feed.
+# `rustlink` - Decentralized Cryptocurrency Price Feed
+    
+A lightweight rust library for periodically retrieving cryptocurrency prices from the ChainLink decentralized price feed. With `rustlink`, you can easily retrieve the latest price of any cryptocurrency supported by ChainLink. 
+
+## Features
+- Retrieve the latest price of any cryptocurrency supported by ChainLink.
+- WASM-compatible, so you can use it in your web applications.
+- Lightweight and easy to use.
+- Customizable update interval for rate limiting.
+- Add any custom contract list.
+- Customizable RPC url.
+
+## Why `rustlink`?
+
+The core principle I have maintained while developing this library is robustness and simplicity. As Web3-developers, payment operators we often need to retrieve cryptocurrency prices. However, most of the libraries available use centralized exchange APIs that have shown to be unreliable and are affected by local exchange fluctuations. Using the ChainLink dencetralized data feed we can retrieve reliable data that is provided by many independent oracles. 
+
+The library is made to be WASM-compatible, so you can use it in your web applications as well. This allows you to receive decentralized price updates in real-time in your web and desktop apps, without having to rely on centralized price feeds or APIs.
+
+To see which cryptocurrencies are supported by ChainLink, you can visit the [ChainLink data feeds list](https://data.chain.link/feeds).
+
+## What is WASM?
+WebAssembly (WASM) is a binary instruction format for a stack-based virtual machine. WASM is designed as a portable target for compilation of high-level languages like C/C++/Rust, enabling deployment on the web for client and server applications. WASM is supported by all major browsers, including Chrome, Firefox, Safari, and Edge.
+
+This means that you can run rust code in your web applications, and use `rustlink` to retrieve cryptocurrency prices in real-time in your web apps.
+
+## Installation
+To use `rustlink` in your project, add the following to your `Cargo.toml` file:
+
+```toml
+[dependencies]
+rustlink = "0.0.1"
+```
+
+## Usage
+Here is a simple example of how you can use `rustlink` to retrieve the latest price of a cryptocurrency:
+
+```rust
+use async_std::channel::unbounded;
+use rustlink::config::{Reflector, Rustlink};
+
+#[tokio::main]
+async fn main(){
+    let mut contracts: Vec<(String, String)> = Vec::new();
+    contracts.push((
+        "ETH".to_string(),"0x9ef1B8c0E4F7dc8bF5719Ea496883DC6401d5b2e".to_string(),
+    ));
+    
+    let (sender, receiver) = unbounded();
+    
+    let rustlink = Rustlink::try_new(
+        "https://bsc-dataseed1.binance.org/",
+        1,
+        Reflector::Sender(sender),
+        contracts,
+    )
+    .unwrap();
+    rustlink.start();
+    let round_data = receiver.recv().await.unwrap();
+    println!("Received data: {:#?}", round_data);
+}
+```
+
+You can also loop through the `receiver` to get the latest price updates in real-time by putting the receiver in a loop:
+
+```rust
+loop {
+    let round_data = receiver.recv().await.unwrap();
+    println!("Received data: {:#?}", round_data);
+}
+```

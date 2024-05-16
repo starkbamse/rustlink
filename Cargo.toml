@@ -1,6 +1,6 @@
 [package]
 name = "rustlink"
-version = "0.1.0"
+version = "0.0.1"
 edition = "2021"
 
 [dependencies]
@@ -11,7 +11,6 @@ bincode = "1.3.3"
 serde = "1.0.201"
 thiserror = "1.0.60"
 workflow-rs = { version = "0.12.1", features = ["full"] }
-
 
 # Async-std included for all builds
 async-std = "1.12.0"
