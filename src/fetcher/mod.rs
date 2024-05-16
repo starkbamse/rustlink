@@ -4,8 +4,8 @@ use async_std::stream::StreamExt;
 use futures::{select, FutureExt};
 
 use super::interface::{ChainlinkContract, Round};
-use crate::rustlink::Reflector::Sender;
-use crate::rustlink::{Configuration, Rustlink};
+use crate::core::Reflector::Sender;
+use crate::core::{Configuration, Rustlink};
 
 /// Retrieves the price of an underlying asset from a particular contract
 async fn fetch_round_data_for_contract(

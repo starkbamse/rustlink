@@ -47,7 +47,7 @@ pub struct Rustlink {
 /// which you can create by doing:
 /// ```rust
 /// use async_std::channel::unbounded;
-/// use rustlink::config::Reflector;
+/// use rustlink::core::Reflector;
 ///
 /// let (sender, receiver) = unbounded();
 ///
@@ -76,7 +76,7 @@ impl Rustlink {
     ///
     /// ```rust
     /// use async_std::channel::unbounded;
-    /// use rustlink::config::{Reflector, Rustlink};
+    /// use rustlink::core::{Reflector, Rustlink};
     /// 
     /// #[tokio::main]
     /// 

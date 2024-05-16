@@ -1,4 +1,4 @@
-pub mod rustlink;
+pub mod core;
 mod error;
 mod fetcher;
 mod interface;
@@ -7,7 +7,7 @@ mod tests {
 
     use async_std::channel::unbounded;
 
-    use crate::rustlink::{Reflector, Rustlink};
+    use crate::core::{Reflector, Rustlink};
 
     #[tokio::test]
     async fn ensure_price_is_received() {
