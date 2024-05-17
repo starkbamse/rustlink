@@ -2,9 +2,9 @@
 /// This library provides a simple interface to fetch price data from the Chainlink decentralized data feed.
 /// Core is the main module that contains the main struct `Rustlink` that you will need to interact with.
 pub mod core;
+mod interface;
 mod error;
 mod fetcher;
-mod interface;
 #[cfg(test)]
 mod tests {
 
