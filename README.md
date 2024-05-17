@@ -28,7 +28,7 @@ To use `rustlink` in your project, add the following to your `Cargo.toml` file:
 
 ```toml
 [dependencies]
-rustlink = "0.0.1"
+rustlink = "0.0.2"
 ```
 
 ## Build for WASM
