@@ -1,4 +1,4 @@
-use crate::{error::Error, fetcher::fetch_rounds, interface::Round};
+use crate::{error::Error, fetcher::fetch_rounds, interface};
 
 use async_std::channel::{unbounded, Receiver, RecvError, Sender};
 use ethers::{providers::{Http, Provider}, types::Address};
@@ -58,6 +58,8 @@ pub enum Reflector {
     /// A sender from async-std
     Sender(Sender<Round>),
 }
+
+pub type Round = interface::Round;
 
 impl Rustlink {
     /// Creates a new Rustlink instance.
